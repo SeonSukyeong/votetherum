@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, Linking, Alert } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getElection, setVoterEligibility } from '../../services/interact'; // 스마트 계약 함수 호출
+import { checkVoterEligibility } from '../../services/interact'; // 스마트 계약 함수 호출
 import { NGROK_URL } from '@env';  // 환경변수에서 URL 가져오기
 
 type RootStackParamList = {
@@ -20,43 +20,56 @@ const VoteList_pre = () => {
   const [userName, setUserName] = useState('눈송이');
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
 
+  // MetaMask에서 돌아올 때 딥링크 응답 처리
   useEffect(() => {
-    const fetchUserName = async () => {
-      try {
-        const storedUserName = await AsyncStorage.getItem('userNickname');
-        if (storedUserName) {
-          setUserName(storedUserName);
-        }
-      } catch (error) {
-        console.error('유저 이름을 가져오는 데 실패했습니다.', error);
-      }
-    };
-
-    fetchUserName();
-    const interval = setInterval(fetchUserName, 1000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const handlePress = async () => {
-    try {
-      const metamaskDeepLink = `metamask://dapp/${NGROK_URL}`;  // 환경변수 사용
-
-      // MetaMask 딥링크로 리디렉션
-      const supported = await Linking.canOpenURL(metamaskDeepLink);
-      if (supported) {
-        await Linking.openURL(metamaskDeepLink);
-        // 지갑 연결을 시뮬레이션하고 지갑 주소를 가져옴
-        const address = '0xYourWalletAddress'; // MetaMask에서 지갑 연결 후 지갑 주소 가져오기
+    const handleDeepLink = async (event: { url: string }) => {
+      const url = event.url;
+      console.log('딥링크 URL 받음:', url);
+      
+      const address = extractWalletAddressFromUrl(url);
+      console.log('추출된 지갑 주소:', address); // 추가된 로그
+      if (address) {
         setWalletAddress(address);
-        // 투표 자격 확인
-        const eligible = await checkVoterEligibility(address);
+        await AsyncStorage.setItem('walletAddress', address);
+        const eligible = await checkVoterEligibilityForAllElections(address);
         if (eligible) {
           Alert.alert('투표 자격이 확인되었습니다!');
-          navigation.navigate('VoteList_post'); // 다음 페이지로 이동
+          navigation.navigate('VoteList_post');
         } else {
           Alert.alert('투표 자격이 없습니다.');
         }
+      } else {
+        console.log('지갑 주소 추출 실패'); // 주소 추출 실패 시 로그
+      }
+   };
+   
+  
+    const handleInitialURL = async () => {
+      const url = await Linking.getInitialURL();
+      if (url) {
+        handleDeepLink({ url });
+      }
+    };
+
+    // 초기 실행 시 현재 URL 확인 (백그라운드에서 돌아왔을 때 처리)
+    handleInitialURL();
+
+    // 리스너 등록
+    const subscription = Linking.addEventListener('url', handleDeepLink);
+  
+    // 클린업 함수
+    return () => {
+      subscription.remove(); // 리스너 제거
+    };
+  }, [navigation]);
+
+  // 지갑 연결 (MetaMask 딥링크 호출)
+  const handlePress = async () => {
+    try {
+      const metamaskDeepLink = `metamask://dapp/${NGROK_URL}`;
+      const supported = await Linking.canOpenURL(metamaskDeepLink);
+      if (supported) {
+        await Linking.openURL(metamaskDeepLink); // MetaMask로 리디렉션
       } else {
         Alert.alert('MetaMask 연결에 실패했습니다.');
       }
@@ -66,13 +79,25 @@ const VoteList_pre = () => {
     }
   };
 
-  const checkVoterEligibility = async (address: string) => {
+  // 딥링크 URL에서 지갑 주소 추출
+  const extractWalletAddressFromUrl = (url: string): string | null => {
+    const regex = /walletAddress=([^&]+)/; // URL에서 지갑 주소 추출
+    const match = url.match(regex);
+    return match ? decodeURIComponent(match[1]) : null;
+  };
+
+  // 여러 선거에 대해 투표 자격 확인
+  const checkVoterEligibilityForAllElections = async (address: string) => {
     try {
-      const electionId = 1; // 예시 선거 ID
-      const election = await getElection(electionId);
-      console.log(`선거 정보: ${election.name}, 종료 시간: ${election.endTime}`);
-      await setVoterEligibility(electionId, address); // 투표 자격 설정
-      return true;
+      const electionIds = [1, 2, 3]; // 여기에 실제 컨트랙트에서 가져올 선거 ID 목록 사용
+      for (const electionId of electionIds) {
+        const eligible = await checkVoterEligibility(electionId, address); // 블록체인에서 유권자 자격 확인
+        if (eligible) {
+          console.log(`선거 ID ${electionId}에 대해 ${address}가 유권자입니다.`);
+          return true;
+        }
+      }
+      return false; // 모든 선거에 대해 유권자 자격이 없는 경우
     } catch (error) {
       console.error('투표 자격 확인 오류:', error);
       return false;
@@ -84,7 +109,6 @@ const VoteList_pre = () => {
       <View style={styles.centeredContent}>
         <Text style={styles.topText}>{`${userName}님이 투표 가능한\n투표 목록입니다!`}</Text>
 
-        {/* 탭 버튼 */}
         <View style={styles.tabContainer}>
           <TouchableOpacity
             style={[styles.tabButton, selectedTab === '지정투표' && styles.activeTabButton]}
@@ -119,11 +143,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingBottom: 30,
-  },
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
   },
   centeredContent: {
     justifyContent: 'center',

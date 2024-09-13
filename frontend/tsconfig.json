@@ -4,7 +4,9 @@
     "baseUrl": ".",
     "paths": {
       "@env": ["src/@types/env.d.ts"]
-    }
+    },
+    "resolveJsonModule": true,        // JSON 모듈을 지원하도록 설정
+    "esModuleInterop": true           // ES 모듈과의 호환성 설정
   },
   "include": ["src/**/*"]
 }

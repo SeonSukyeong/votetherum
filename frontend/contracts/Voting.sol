@@ -40,6 +40,11 @@ contract Voting {
         eligibleVoters[electionId][voter] = true;
     }
 
+    // 특정 선거에서 유권자 자격을 확인하는 함수
+    function checkVoterEligibility(uint electionId, address voter) public view returns (bool) {
+        return eligibleVoters[electionId][voter];
+    }
+
     // 특정 선거에 투표 함수
     function vote(uint electionId, string memory candidateName) public {
         require(block.timestamp < elections[electionId].endTime, "Election has ended");
@@ -59,5 +64,10 @@ contract Voting {
     function getElection(uint electionId) public view returns (string memory name, uint endTime) {
         Election storage election = elections[electionId];
         return (election.name, election.endTime);
+    }
+
+    //후보자 목록을 반환하는 함수
+    function getCandidates(uint256 _electionId) public view returns (string[] memory) {
+        return elections[_electionId].candidates;
     }
 }

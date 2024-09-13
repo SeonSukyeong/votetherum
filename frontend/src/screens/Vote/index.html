@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MetaMask Interaction</title>
+</head>
+<body>
+    <script>
+        async function connectMetaMask() {
+            if (window.ethereum) {
+                try {
+                    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    const address = accounts[0];
+                    // 지갑 주소를 앱으로 전달 (웹뷰의 postMessage API 사용)
+                    window.ReactNativeWebView.postMessage(address);
+                } catch (error) {
+                    console.error('MetaMask 연결 오류:', error);
+                }
+            } else {
+                console.log('MetaMask가 설치되지 않았습니다.');
+            }
+        }
+
+        // 페이지가 로드되면 MetaMask와 연결
+        window.onload = connectMetaMask;
+    </script>
+</body>
+</html>

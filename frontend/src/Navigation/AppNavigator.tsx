@@ -1,7 +1,6 @@
-import React, {useState, createContext} from 'react';
-import {Image} from 'react-native';
-import {NavigationContainer} from '@react-navigation/native';
-import {createNativeStackNavigator} from '@react-navigation/native-stack';
+import React, { useState, createContext } from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 // Import your screens
 import BottomTabNavigator from './BottomTabNavigator';
@@ -15,7 +14,8 @@ import FindPasswordScreen from '../screens/Login/FindPasswordScreen';
 import SignUpScreen from '../screens/Login/SignUpScreen';
 import VoteList_pre from '../screens/Vote/VoteList_pre';
 import VoteList_post from '../screens/Vote/VoteList_post';
-//import ProfileScreen from '../screens/MY/profilescreen';
+import VoteCandidate from '../screens/Vote/VoteCandidate'; // Import VoteCandidate screen
+import VoteComplete from '../screens/Vote/VoteComplete';
 
 const AuthContext = createContext({
   isLoggedIn: false,
@@ -32,7 +32,7 @@ const AppNavigator = () => {
   const logout = () => setIsLoggedIn(false);
 
   return (
-    <AuthContext.Provider value={{isLoggedIn, login, logout}}>
+    <AuthContext.Provider value={{ isLoggedIn, login, logout }}>
       <NavigationContainer>
         <Stack.Navigator>
           {isLoggedIn ? (
@@ -40,7 +40,7 @@ const AppNavigator = () => {
               <Stack.Screen
                 name="Main"
                 component={BottomTabNavigator}
-                options={{headerShown: false}}
+                options={{ headerShown: false }}
               />
               <Stack.Screen name="Home" component={Home} />
               <Stack.Screen name="Search" component={Search} />
@@ -49,16 +49,30 @@ const AppNavigator = () => {
               <Stack.Screen
                 name="VoteList_pre"
                 component={VoteList_pre}
-                options={{ headerShown: false }} 
-/>
-              
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="VoteList_post"
+                component={VoteList_post}
+                options={{ headerShown: false }} // 헤더 숨기기
+              />
+              <Stack.Screen
+                name="VoteCandidate"
+                component={VoteCandidate}
+                options={{ headerShown: false }} // 헤더 숨기기
+              />
+              <Stack.Screen
+                name="VoteComplete"
+                component={VoteComplete}
+                options={{ headerShown: false }} // 헤더 숨기기
+              />
             </>
           ) : (
             <>
               <Stack.Screen
                 name="LoginScreen"
                 component={LoginScreen}
-                options={{headerShown: false}}
+                options={{ headerShown: false }}
               />
               <Stack.Screen name="FindID" component={FindIDScreen} />
               <Stack.Screen
@@ -74,5 +88,5 @@ const AppNavigator = () => {
   );
 };
 
-export {AppNavigator, AuthContext};
+export { AppNavigator, AuthContext };
 export default AppNavigator;
